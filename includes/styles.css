@@ -8,7 +8,7 @@
 }
 
 .itemdb-item.u-card {
-  width: calc(33.333% - 30px); /* For a 3-column grid */
+  width: calc(25% - 30px); /* For a 4-column grid */
   margin-bottom: 30px; /* Adjust this value for the desired space between rows */
   margin-left: 10px; /* Half of the desired space between columns */
   margin-right: 10px;
@@ -29,13 +29,11 @@
 
 .itemdb-thumbnail {
   width: 100%;
-  height: auto;
+  height: 200px;
   display: block;
-  transition: transform 0.3s ease;
-}
-
-.itemdb-item.u-card:hover .itemdb-thumbnail {
-  transform: scale(1.1);
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
 }
 
 .itemdb-content.u-card__content {
@@ -57,4 +55,31 @@
   font-size: 14px;
   color: #888888;
   margin: 10px 0 0;
+}
+
+.itemdb-filter {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.itemdb-filter a {
+  margin: 0 5px;
+  text-decoration: none;
+}
+
+.itemdb-filter a:hover {
+  text-decoration: underline;
+}
+
+.itemdb-search-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1em;
+}
+
+#itemdb-search {
+  margin-right: 10px;
+  min-width: 50%;
 }
