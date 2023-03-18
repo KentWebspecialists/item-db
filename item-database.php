@@ -183,34 +183,36 @@ add_shortcode('ItemDB', 'itemdb_display_items');
 // //////////////// //
 // //////////////// //
 
-function itemdb_settings_page() {
-    ?>
-    <div class="wrap">
-        <h1>ItemDB Settings</h1>
-        <form method="post" action="options.php">
-            <?php
-            settings_fields('itemdb_options');
-            do_settings_sections('itemdb_options');
-            ?>
-            <table class="form-table">
-                <tr valign="top">
-                    <th scope="row">Google API Key</th>
-                    <td><input type="text" name="itemdb_google_api_key" value="<?php echo esc_attr(get_option('itemdb_google_api_key')); ?>" /></td>
-                </tr>
-            </table>
-            <?php submit_button(); ?>
-        </form>
-    </div>
-    <?php
-}
-
 function itemdb_register_settings() {
     register_setting('itemdb_options', 'itemdb_google_api_key');
-    register_setting('itemdb_options', 'itemdb_services_api_key');
 }
-add_action('admin_init', 'itemdb_register_settings');
 
 function itemdb_add_settings_menu() {
     add_options_page('ItemDB Settings', 'ItemDB Settings', 'manage_options', 'itemdb-settings', 'itemdb_settings_page');
+
+    add_settings_section(
+        'itemdb_google_sheets_section',
+        __( 'Google Sheets Integration', 'itemdb' ),
+        'itemdb_google_sheets_settings_section',
+        'itemdb_settings'
+    );
+    
+
 }
+
+add_action('admin_init', 'itemdb_register_settings');
 add_action('admin_menu', 'itemdb_add_settings_menu');
+
+
+
+// Google Sheets Integration
+function itemdb_google_sheets_settings_section() {
+    echo '<p>' . __( 'Connect to Google Sheets to import data into the item database.', 'itemdb' ) . '</p>';
+
+    // Add the API Key field
+    echo '<label for="itemdb_google_api_key">' . __( 'Google API Key', 'itemdb' ) . '</label><br>';
+    echo '<input type="text" id="itemdb_google_api_key" name="itemdb_google_api_key" value="' . esc_attr(get_option('itemdb_google_api_key')) . '" />';
+}
+
+// Include the settings page file
+require_once( plugin_dir_path( __FILE__ ) . 'includes/settings-page.php' );
