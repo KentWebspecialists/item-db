@@ -13,6 +13,11 @@ Domain Path: /languages
 */
 require_once plugin_dir_path(__FILE__) . 'includes/itemdb-shortcode.php';
 
+function itemdb_register_settings() {
+    register_setting('itemdb_settings_group', 'itemdb_google_api_key');
+    register_setting('itemdb_settings_group', 'itemdb_google_sheet_url');
+}
+
 function itemdb_post_type() {
     register_post_type( 'item-db',
         array(
@@ -186,20 +191,18 @@ add_shortcode('ItemDB', 'itemdb_display_items');
 function itemdb_settings_page() {
     ?>
     <div class="wrap">
-        <h1>ItemDB Settings</h1>
+        <h1>Item DB Settings</h1>
         <form method="post" action="options.php">
-            <?php
-            settings_fields('itemdb_options');
-            do_settings_sections('itemdb_options');
-            ?>
+            <?php settings_fields('itemdb_settings_group'); ?>
+            <?php do_settings_sections('itemdb_settings_group'); ?>
             <table class="form-table">
                 <tr valign="top">
                     <th scope="row">Google API Key</th>
                     <td><input type="text" name="itemdb_google_api_key" value="<?php echo esc_attr(get_option('itemdb_google_api_key')); ?>" /></td>
                 </tr>
                 <tr valign="top">
-                    <th scope="row">Services API Key</th>
-                    <td><input type="text" name="itemdb_services_api_key" value="<?php echo esc_attr(get_option('itemdb_services_api_key')); ?>" /></td>
+                    <th scope="row">Google Sheet URL</th>
+                    <td><input type="text" name="itemdb_google_sheet_url" value="<?php echo esc_attr(get_option('itemdb_google_sheet_url')); ?>" /></td>
                 </tr>
             </table>
             <?php submit_button(); ?>
@@ -207,14 +210,72 @@ function itemdb_settings_page() {
     </div>
     <?php
 }
-
-function itemdb_register_settings() {
-    register_setting('itemdb_options', 'itemdb_google_api_key');
-    register_setting('itemdb_options', 'itemdb_services_api_key');
-}
+add_action('admin_menu', 'itemdb_add_settings_page');
 add_action('admin_init', 'itemdb_register_settings');
+
+function get_sheet_id_from_url($url) {
+    $parts = parse_url($url);
+    parse_str($parts['query'], $query);
+    return $query['gid'];
+}
+
+function get_sheet_data($api_key, $sheet_id) {
+    $url = 'https://sheets.googleapis.com/v4/spreadsheets/' . $sheet_id . '/values/A:Z?key=' . $api_key;
+    $response = wp_remote_get($url);
+    $body = wp_remote_retrieve_body($response);
+    $data = json_decode($body, true);
+    return $data['values'];
+}
+
+
+
+add_action('admin_init', 'itemdb_register_settings');
+
 
 function itemdb_add_settings_menu() {
     add_options_page('ItemDB Settings', 'ItemDB Settings', 'manage_options', 'itemdb-settings', 'itemdb_settings_page');
 }
 add_action('admin_menu', 'itemdb_add_settings_menu');
+
+function itemdb_import_sheet($sheet_url) {
+    // Load Google Sheets API library
+    require_once(plugin_dir_path(__FILE__) . 'vendor/autoload.php');
+
+    // Get Google API key
+    $google_api_key = get_option('itemdb_google_api_key');
+
+    // Initialize client object
+    $client = new Google_Client();
+    $client->setApplicationName('ItemDB Plugin');
+    $client->setDeveloperKey($google_api_key);
+
+    // Initialize Sheets API service
+    $service = new Google_Service_Sheets($client);
+
+    // Parse sheet ID and range from URL
+    $sheet_id = preg_replace("/^.*\/spreadsheets\/d\/([a-zA-Z0-9-_]+).*/", "$1", $sheet_url);
+    $range = 'Sheet1!A2:C'; // Change to match your sheet range
+
+    // Retrieve data from sheet
+    $response = $service->spreadsheets_values->get($sheet_id, $range);
+    $values = $response->getValues();
+
+    // Loop through each row of data and create custom post type
+    foreach ($values as $row) {
+        // Create post object
+        $post = array(
+            'post_title' => $row[0], // Change to match your data format
+            'post_type' => 'item-db',
+            'post_status' => 'publish',
+        );
+
+        // Insert the post into the database
+        $post_id = wp_insert_post($post);
+
+        // Add meta data to the post
+        update_post_meta($post_id, '_itemdb_custom_fields', array(
+            array('label' => 'Field 1', 'value' => $row[1]), // Change to match your data format
+            array('label' => 'Field 2', 'value' => $row[2]), // Change to match your data format
+        ));
+    }
+}
