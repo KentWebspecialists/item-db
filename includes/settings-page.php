@@ -1,5 +1,4 @@
 <?php
-
 function itemdb_settings_page() {
     ?>
     <div class="wrap">
@@ -19,9 +18,4 @@ function itemdb_settings_page() {
     </div>
     <?php
 }
-
-function itemdb_google_api_key_field() {
-    echo '<input type="text" id="itemdb_google_api_key" name="itemdb_google_api_key" value="' . esc_attr(get_option('itemdb_google_api_key')) . '" />';
-}
-
 require_once( plugin_dir_path( __FILE__ ) . '../item-database.php' );

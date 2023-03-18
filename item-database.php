@@ -183,9 +183,41 @@ add_shortcode('ItemDB', 'itemdb_display_items');
 // //////////////// //
 // //////////////// //
 
+// Include the settings page file
+require_once( plugin_dir_path( __FILE__ ) . 'includes/settings-page.php' );
+
 function itemdb_register_settings() {
     register_setting('itemdb_options', 'itemdb_google_api_key');
 }
+
+function itemdb_google_api_key_field() {
+    echo '<input type="text" id="itemdb_google_api_key" name="itemdb_google_api_key" value="' . esc_attr(get_option('itemdb_google_api_key')) . '" />';
+}
+
+function itemdb_google_sheets_import_section_callback() {
+    // echo '<p>' . __( 'Import data from a Google Sheet into the item database.', 'itemdb' ) . '</p>';
+}
+
+function itemdb_google_sheet_id_field_callback() {
+    echo '<input type="text" id="itemdb_google_sheet_id" name="itemdb_google_sheet_id" value="' . esc_attr( get_option( 'itemdb_google_sheet_id' ) ) . '" />';
+}
+
+function itemdb_google_sheets_settings_section() {
+    echo '<p>' . __( 'Connect to Google Sheets to import data into the item database.', 'itemdb' ) . '</p>';
+
+    // Add the API Key field
+    echo '<label for="itemdb_google_api_key">' . __( 'Google API Key', 'itemdb' ) . '</label><br>';
+    itemdb_google_api_key_field();
+
+    echo '<hr>';
+
+    // Add the Google Sheets Import section
+    echo '<label for="itemdb_google_sheet_id">' . __( 'Google Sheet ID', 'itemdb' ) . '</label><br>';
+    echo '<p>' . __( 'Enter the ID of the Google Sheet you want to import data from.', 'itemdb' ) . '</p>';
+    itemdb_google_sheet_id_field_callback();
+    echo '<button type="submit" name="itemdb_import_sheet" class="button">' . __( 'Import Data', 'itemdb' ) . '</button>';
+}
+
 
 function itemdb_add_settings_menu() {
     add_options_page('ItemDB Settings', 'ItemDB Settings', 'manage_options', 'itemdb-settings', 'itemdb_settings_page');
@@ -197,22 +229,14 @@ function itemdb_add_settings_menu() {
         'itemdb_settings'
     );
     
+    // add_settings_section(
+    //     'itemdb_google_sheets_import_section',
+    //     __( 'Google Sheets Import', 'itemdb' ),
+    //     'itemdb_google_sheets_import_section_callback',
+    //     'itemdb_settings'
+    // );
 
 }
 
 add_action('admin_init', 'itemdb_register_settings');
 add_action('admin_menu', 'itemdb_add_settings_menu');
-
-
-
-// Google Sheets Integration
-function itemdb_google_sheets_settings_section() {
-    echo '<p>' . __( 'Connect to Google Sheets to import data into the item database.', 'itemdb' ) . '</p>';
-
-    // Add the API Key field
-    echo '<label for="itemdb_google_api_key">' . __( 'Google API Key', 'itemdb' ) . '</label><br>';
-    echo '<input type="text" id="itemdb_google_api_key" name="itemdb_google_api_key" value="' . esc_attr(get_option('itemdb_google_api_key')) . '" />';
-}
-
-// Include the settings page file
-require_once( plugin_dir_path( __FILE__ ) . 'includes/settings-page.php' );
