@@ -174,3 +174,47 @@ function itemdb_save_custom_fields($post_id) {
 add_action('save_post', 'itemdb_save_custom_fields');
 
 add_shortcode('ItemDB', 'itemdb_display_items');
+
+// //////////////// //
+// //////////////// //
+// //////////////// //
+// Settings Section //
+// //////////////// //
+// //////////////// //
+// //////////////// //
+
+function itemdb_settings_page() {
+    ?>
+    <div class="wrap">
+        <h1>ItemDB Settings</h1>
+        <form method="post" action="options.php">
+            <?php
+            settings_fields('itemdb_options');
+            do_settings_sections('itemdb_options');
+            ?>
+            <table class="form-table">
+                <tr valign="top">
+                    <th scope="row">Google API Key</th>
+                    <td><input type="text" name="itemdb_google_api_key" value="<?php echo esc_attr(get_option('itemdb_google_api_key')); ?>" /></td>
+                </tr>
+                <tr valign="top">
+                    <th scope="row">Services API Key</th>
+                    <td><input type="text" name="itemdb_services_api_key" value="<?php echo esc_attr(get_option('itemdb_services_api_key')); ?>" /></td>
+                </tr>
+            </table>
+            <?php submit_button(); ?>
+        </form>
+    </div>
+    <?php
+}
+
+function itemdb_register_settings() {
+    register_setting('itemdb_options', 'itemdb_google_api_key');
+    register_setting('itemdb_options', 'itemdb_services_api_key');
+}
+add_action('admin_init', 'itemdb_register_settings');
+
+function itemdb_add_settings_menu() {
+    add_options_page('ItemDB Settings', 'ItemDB Settings', 'manage_options', 'itemdb-settings', 'itemdb_settings_page');
+}
+add_action('admin_menu', 'itemdb_add_settings_menu');
