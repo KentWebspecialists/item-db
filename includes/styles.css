@@ -1,0 +1,60 @@
+.flex-grid {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  margin-bottom: -30px; /* Adjust this value for the desired space between rows */
+}
+
+.itemdb-item.u-card {
+  width: calc(33.333% - 30px); /* For a 3-column grid */
+  margin-bottom: 30px; /* Adjust this value for the desired space between rows */
+  margin-left: 10px; /* Half of the desired space between columns */
+  margin-right: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.itemdb-thumbnail-wrapper.u-card__image {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.itemdb-thumbnail {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.itemdb-item.u-card:hover .itemdb-thumbnail {
+  transform: scale(1.1);
+}
+
+.itemdb-content.u-card__content {
+  padding: 15px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.u-card__heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  flex: 1;
+}
+
+.u-card__sub-heading {
+  font-size: 14px;
+  color: #888888;
+  margin: 10px 0 0;
+}
