@@ -197,10 +197,6 @@ function itemdb_settings_page() {
                     <th scope="row">Google API Key</th>
                     <td><input type="text" name="itemdb_google_api_key" value="<?php echo esc_attr(get_option('itemdb_google_api_key')); ?>" /></td>
                 </tr>
-                <tr valign="top">
-                    <th scope="row">Services API Key</th>
-                    <td><input type="text" name="itemdb_services_api_key" value="<?php echo esc_attr(get_option('itemdb_services_api_key')); ?>" /></td>
-                </tr>
             </table>
             <?php submit_button(); ?>
         </form>
