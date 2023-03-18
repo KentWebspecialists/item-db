@@ -1,5 +1,13 @@
 <?php
 function itemdb_display_items($atts) {
+    $atts = shortcode_atts(array(
+        'category' => '',
+        'fields' => ''
+    ), $atts);
+
+    $google_api_key = get_option('itemdb_google_api_key');
+    $services_api_key = get_option('itemdb_services_api_key');
+    
     // Get filter value from URL parameter
     $letter_filter = isset($_GET['letter']) ? $_GET['letter'] : '';
 
