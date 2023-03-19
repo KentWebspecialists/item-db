@@ -13,20 +13,31 @@ Domain Path: /languages
 */
 require_once plugin_dir_path(__FILE__) . 'includes/itemdb-shortcode.php';
 
+ // //////////////// //
+ // //////////////// //
+ // //////////////// //
+// Post Type Register //
+ // //////////////// //
+ // //////////////// //
+ // //////////////// //
+
 function itemdb_post_type() {
     register_post_type( 'item-db',
-        array(
-            'labels' => array(
-                'name' => __( 'Items' ),
-                'singular_name' => __( 'Item DB' )
-            ),
-            'public' => true,
-            'show_in_rest' => true,
-            'supports' => array('title', 'thumbnail', 'custom-fields'),
+    array(
+        'labels' => array(
+            'name' => __( 'Items' ),
+            'singular_name' => __( 'Item DB' )
+        ),
+        'public' => true,
+        'show_in_rest' => true,
+        'supports' => array('title', 'thumbnail', 'custom-fields'),
         'has_archive' => true,
         'rewrite'   => array( 'slug' => 'item-db' ),
-            'menu_position' => 5,
+        'menu_position' => 5,
         'menu_icon' => 'dashicons-layout',
+        'exclude_from_search' => false,
+        'publicly_queryable' => true,
+        'capability_type' => 'post',
         )
     );
 }
@@ -97,10 +108,13 @@ function itemdb_create_categories() {
 }
 add_action('init', 'itemdb_create_categories');
 
-// function itemdb_add_meta_boxes() {
-//     add_meta_box('itemdb_custom_fields', 'Item Data', 'itemdb_custom_fields_callback', 'item-db');
-// }
-// add_action('add_meta_boxes', 'itemdb_add_meta_boxes');
+// //////////////// //
+// //////////////// //
+// //////////////// //
+// Enqueue Scripts  //
+// //////////////// //
+// //////////////// //
+// //////////////// //
 
 function itemdb_enqueue_frontend_scripts() {
     wp_enqueue_style('itemdb-style', plugin_dir_url(__FILE__) . 'includes/styles.css', array(), '1.0.0');
@@ -115,6 +129,15 @@ function itemdb_enqueue_admin_scripts($hook) {
     wp_enqueue_script('itemdb-admin-script', plugin_dir_url(__FILE__) . 'includes/admin-script.js', array('jquery'), '1.0.0', true);
 }
 add_action('admin_enqueue_scripts', 'itemdb_enqueue_admin_scripts');
+
+
+// //////////////// //
+// //////////////// //
+// //////////////// //
+//  Custom Fields   //
+// //////////////// //
+// //////////////// //
+// //////////////// //
 
 function itemdb_custom_fields_callback($post) {
     wp_nonce_field('itemdb_save_custom_fields', 'itemdb_custom_fields_nonce');
@@ -183,60 +206,125 @@ add_shortcode('ItemDB', 'itemdb_display_items');
 // //////////////// //
 // //////////////// //
 
-// Include the settings page file
-require_once( plugin_dir_path( __FILE__ ) . 'includes/settings-page.php' );
 
-function itemdb_register_settings() {
-    register_setting('itemdb_options', 'itemdb_google_api_key');
+
+// //////////////// //
+// //////////////// //
+// //////////////// //
+// Export Items CSV //
+// //////////////// //
+// //////////////// //
+// //////////////// //
+
+
+// Add custom bulk action to the edit.php screen
+add_filter( 'bulk_actions-edit-item-db', 'custom_export_bulk_action' );
+function custom_export_bulk_action( $bulk_actions ) {
+    $bulk_actions['export_to_csv'] = 'Export to CSV';
+    return $bulk_actions;
 }
 
-function itemdb_google_api_key_field() {
-    echo '<input type="text" id="itemdb_google_api_key" name="itemdb_google_api_key" value="' . esc_attr(get_option('itemdb_google_api_key')) . '" />';
+// Process the custom bulk action
+add_action( 'admin_action_export_to_csv', 'custom_export_bulk_action_handler' );
+function custom_export_bulk_action_handler() {
+    // Get selected post IDs
+    $post_ids = isset( $_REQUEST['post'] ) ? $_REQUEST['post'] : array();
+
+    // Get post data
+    $posts = get_posts( array(
+        'post_type' => 'item-db',
+        'post__in' => $post_ids,
+        'posts_per_page' => -1,
+    ) );
+
+    // Output CSV file
+    header( 'Content-Type: text/csv' );
+    header( 'Content-Disposition: attachment; filename="custom-export.csv"' );
+    $output = fopen( 'php://output', 'w' );
+    fputcsv( $output, array( 'Title', 'Content', 'Custom Fields' ) );
+    foreach ( $posts as $post ) {
+        $custom_fields = get_post_meta( $post->ID );
+        $custom_fields_array = array();
+        foreach ( $custom_fields as $key => $value ) {
+            // Exclude some meta keys from export (change or remove as needed)
+            if ( ! in_array( $key, array( '_edit_lock', '_edit_last' ) ) ) {
+                $custom_fields_array[] = $key . ': ' . implode( ', ', $value );
+            }
+        }
+        fputcsv( $output, array( $post->post_title, $post->post_content, implode( '; ', $custom_fields_array ) ) );
+    }    
+    fclose( $output );
+    exit;
 }
 
-function itemdb_google_sheets_import_section_callback() {
-    // echo '<p>' . __( 'Import data from a Google Sheet into the item database.', 'itemdb' ) . '</p>';
+// //////////////// //
+// //////////////// //
+// //////////////// //
+// Import Items CSV //
+// //////////////// //
+// //////////////// //
+// //////////////// //
+
+
+// CSV Import Settings Section Callback
+function itemdb_csv_settings_section_callback() {
+    echo '<p>' . __( 'Upload a CSV file to import item data.', 'itemdb' ) . '</p>';
 }
 
-function itemdb_google_sheet_id_field_callback() {
-    echo '<input type="text" id="itemdb_google_sheet_id" name="itemdb_google_sheet_id" value="' . esc_attr( get_option( 'itemdb_google_sheet_id' ) ) . '" />';
+// CSV Import Field Callback
+function itemdb_csv_import_field_callback() {
+    echo '<input type="file" name="itemdb_csv_import_file">';
 }
 
-function itemdb_google_sheets_settings_section() {
-    echo '<p>' . __( 'Connect to Google Sheets to import data into the item database.', 'itemdb' ) . '</p>';
-
-    // Add the API Key field
-    echo '<label for="itemdb_google_api_key">' . __( 'Google API Key', 'itemdb' ) . '</label><br>';
-    itemdb_google_api_key_field();
-
-    echo '<hr>';
-
-    // Add the Google Sheets Import section
-    echo '<label for="itemdb_google_sheet_id">' . __( 'Google Sheet ID', 'itemdb' ) . '</label><br>';
-    echo '<p>' . __( 'Enter the ID of the Google Sheet you want to import data from.', 'itemdb' ) . '</p>';
-    itemdb_google_sheet_id_field_callback();
-    echo '<button type="submit" name="itemdb_import_sheet" class="button">' . __( 'Import Data', 'itemdb' ) . '</button>';
+// CSV Import Button Callback
+function itemdb_csv_import_button_callback() {
+    echo '<button class="button" type="submit" name="itemdb_csv_import" value="import">' . __( 'Import', 'itemdb' ) . '</button>';
 }
 
+// Process CSV Import
+add_action( 'admin_post_itemdb_csv_import', 'itemdb_csv_import' );
 
-function itemdb_add_settings_menu() {
-    add_options_page('ItemDB Settings', 'ItemDB Settings', 'manage_options', 'itemdb-settings', 'itemdb_settings_page');
+function itemdb_csv_import() {
+    // Check if the file was uploaded
+    if ( isset( $_FILES['itemdb_csv_file'] ) && ! empty( $_FILES['itemdb_csv_file']['tmp_name'] ) ) {
+        // Get the file
+        $file = $_FILES['itemdb_csv_file']['tmp_name'];
+        $handle = fopen( $file, 'r' );
 
-    add_settings_section(
-        'itemdb_google_sheets_section',
-        __( 'Google Sheets Integration', 'itemdb' ),
-        'itemdb_google_sheets_settings_section',
-        'itemdb_settings'
-    );
-    
-    // add_settings_section(
-    //     'itemdb_google_sheets_import_section',
-    //     __( 'Google Sheets Import', 'itemdb' ),
-    //     'itemdb_google_sheets_import_section_callback',
-    //     'itemdb_settings'
-    // );
+        // Process the file line by line
+        while ( $data = fgetcsv( $handle ) ) {
+            $post_title = isset( $data[0] ) ? $data[0] : '';
+            $post_content = isset( $data[1] ) ? $data[1] : '';
+            $post_custom_fields = isset( $data[2] ) ? explode( '; ', $data[2] ) : array();
 
+            // Create the post
+            $post_id = wp_insert_post( array(
+                'post_title' => $post_title,
+                'post_content' => $post_content,
+                'post_type' => 'item-db',
+                'post_status' => 'publish',
+            ) );
+
+            // Add custom fields
+            foreach ( $post_custom_fields as $post_custom_field ) {
+                $field_parts = explode( ': ', $post_custom_field );
+                if ( count( $field_parts ) == 2 ) {
+                    $field_name = $field_parts[0];
+                    $field_value = $field_parts[1];
+                    add_post_meta( $post_id, $field_name, $field_value );
+                }
+            }
+        }
+
+        // Close the file
+        fclose( $handle );
+
+        // Redirect back to the settings page with a success message
+        wp_redirect( add_query_arg( array( 'page' => 'itemdb_settings', 'message' => 'import_success' ), admin_url( 'options-general.php' ) ) );
+        exit;
+    }
+
+    // If no file was uploaded, redirect back to the settings page with an error message
+    wp_redirect( add_query_arg( array( 'page' => 'itemdb_settings', 'message' => 'import_error' ), admin_url( 'options-general.php' ) ) );
+    exit;
 }
-
-add_action('admin_init', 'itemdb_register_settings');
-add_action('admin_menu', 'itemdb_add_settings_menu');

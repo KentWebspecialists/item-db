@@ -11,8 +11,8 @@ function itemdb_settings_page() {
                 // Output setting sections
                 do_settings_sections('itemdb_settings');
 
-                // Submit button
-                submit_button();
+                // Submit button (Save Changes)
+                submit_button("This Button will save the settings, so should really be kept for settings only");
             ?>
         </form>
     </div>
