@@ -32,43 +32,6 @@ function itemdb_post_type() {
 }
 add_action( 'init', 'itemdb_post_type' );
 
-//// Add item-db taxonomy
-function create_items_taxonomy() {
-    register_taxonomy('item-db','recipes',array(
-        'hierarchical' => false,
-        'labels' => array(
-            'name' => _x( 'Items', 'taxonomy general name' ),
-            'singular_name' => _x( 'Items', 'taxonomy singular name' ),
-            'menu_name' => __( 'Item DB' ),
-            'all_items' => __( 'All Items' ),
-            'edit_item' => __( 'Edit Items' ), 
-            'update_item' => __( 'Update Items' ),
-            'add_new_item' => __( 'Add Items' ),
-            'new_item_name' => __( 'New Items' ),
-        ),
-    'show_ui' => true,
-    'show_in_rest' => true,
-    'show_admin_column' => true,
-    ));
-    register_taxonomy('fields','recipes',array(
-        'hierarchical' => false,
-        'labels' => array(
-            'name' => _x( 'fields', 'taxonomy general name' ),
-            'singular_name' => _x( 'Fields', 'taxonomy singular name' ),
-            'menu_name' => __( 'Fields' ),
-            'all_items' => __( 'All Fields' ),
-            'edit_item' => __( 'Edit Fields' ), 
-            'update_item' => __( 'Update Fields' ),
-            'add_new_item' => __( 'Add Fields' ),
-            'new_item_name' => __( 'New Fields' ),
-        ),
-    'show_ui' => true,
-    'show_in_rest' => true,
-    'show_admin_column' => true,
-    ));
-}
-add_action( 'init', 'create_items_taxonomy', 0 );
-
 function itemdb_create_categories() {
     $labels = array(
         'name' => _x('Item Categories', 'taxonomy general name'),
