@@ -1,4 +1,7 @@
 <?php
+
+
+
 function itemdb_display_items($atts) {
     $atts = shortcode_atts(array(
         'category' => '',
@@ -44,34 +47,36 @@ function itemdb_display_items($atts) {
         while ($items->have_posts()) {
             $items->the_post();
     
-            // Get custom field data
-            $custom_fields = get_post_meta(get_the_ID(), 'itemdb_custom_fields', true);
-            $item_data = array();
-            if (!empty($custom_fields)) {
-                foreach ($custom_fields as $field) {
-                    $item_data[$field['label']] = $field['value'];
-                }
-            }
+            // Get all custom fields for the current post
+            $custom_fields = get_post_custom(get_the_ID());
+    
+            $output .= '<div class="itemdb-item u-card">';
     
             // Get thumbnail URL
             $thumb_url = get_the_post_thumbnail_url(get_the_ID(), 'medium');
-    
-            $output .= '<div class="itemdb-item u-card">';
             if (!empty($thumb_url)) {
                 $output .= '<div class="itemdb-thumbnail" style="background-image: url(' . esc_url($thumb_url) . ')"></div>';
             }
             $output .= '<h3>' . get_the_title() . '</h3>';
-            if (!empty($item_data)) {
+    
+            if (!empty($custom_fields)) {
                 $output .= '<ul class="itemdb-custom-fields">';
-                foreach ($item_data as $label => $value) {
-                    $output .= '<li><strong>' . esc_html($label) . ':</strong> ' . esc_html($value) . '</li>';
+                foreach ($custom_fields as $label => $value) {
+                    // Skip the meta keys that don't start with 'my_prefix_'
+                    if (substr($label, 0, strlen('itemdb_')) !== 'itemdb_') {
+                        continue;
+                    }
+                    // Remove the prefix from the label before displaying it
+                    $display_label = substr($label, strlen('itemdb_'));
+                    $output .= '<li><strong>' . esc_html($display_label) . ':</strong> ' . esc_html(implode(', ', $value)) . '</li>';
                 }
                 $output .= '</ul>';
             }
             $output .= '</div>';
         }
         wp_reset_postdata();
-    } else {
+    }
+     else {
         $output .= '<p>No items found.</p>';
     }
 
