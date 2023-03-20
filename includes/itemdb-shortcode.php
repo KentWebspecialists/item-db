@@ -31,40 +31,13 @@ function itemdb_display_items($atts) {
             ),
         );
     }
-
-    // Add custom filter for title starting with a specific letter
-    function itemdb_title_filter($where, $wp_query) {
-        global $wpdb;
-
-        if ($title_like = $wp_query->get('title_like')) {
-            $where .= ' AND ' . $wpdb->posts . '.post_title LIKE \'' . $title_like . '\'';
-        }
-
-        return $where;
-    }
-    add_filter('posts_where', 'itemdb_title_filter', 10, 2);
-
+    
     $items = new WP_Query($args);
-
-    // Remove custom filter
-    remove_filter('posts_where', 'itemdb_title_filter', 10, 2);
-
-    // Generate A-Z filter links
-    $filter_links = '';
-    $current_url = get_permalink();
-
-    for ($i = 65; $i <= 90; $i++) {
-        $letter = chr($i);
-        $filter_links .= '<a href="' . esc_url(add_query_arg('letter', $letter, $current_url)) . '">' . $letter . '</a> ';
-    }
-    $filter_links .= '<a href="' . esc_url(remove_query_arg('letter', $current_url)) . '">All</a>';
-
 
     $output = '<div class="itemdb-wrapper">';
         $output .= '<div class="itemdb-search-container">';
         $output .= '<input type="text" id="itemdb-search" placeholder="Search items...">';
         $output .= '</div>';
-    // $output .= '<div class="itemdb-filter">' . $filter_links . '</div>';
     $output .= '<div class="itemdb-grid flex-grid u-card-grid">';
 
     if ($items->have_posts()) {
