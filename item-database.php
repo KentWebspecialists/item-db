@@ -12,6 +12,17 @@ Text Domain: item-db
 Domain Path: /languages
 */
 require_once plugin_dir_path(__FILE__) . 'includes/itemdb-shortcode.php';
+function itemdb_enqueue_frontend_scripts() {
+    wp_enqueue_style('itemdb-style', plugin_dir_url(__FILE__) . 'includes/styles.css', array(), '1.0.0');
+    wp_enqueue_script('itemdb-script', plugin_dir_url(__FILE__) . 'includes/itemdb.js', array('jquery'), '1.0.0', true);
+}
+add_action('wp_enqueue_scripts', 'itemdb_enqueue_frontend_scripts');
+
+function itemdb_enqueue_scripts() {
+    wp_enqueue_script('itemdb-admin-script', plugin_dir_url(__FILE__) . 'admin-script.js', array('jquery'), '1.0.0', true);
+}
+
+add_action('admin_enqueue_scripts', 'itemdb_enqueue_scripts');
 
 function itemdb_post_type() {
     register_post_type( 'item-db',
@@ -60,24 +71,6 @@ function itemdb_create_categories() {
 }
 add_action('init', 'itemdb_create_categories');
 
-// function itemdb_add_meta_boxes() {
-//     add_meta_box('itemdb_custom_fields', 'Item Data', 'itemdb_custom_fields_callback', 'item-db');
-// }
-// add_action('add_meta_boxes', 'itemdb_add_meta_boxes');
-
-function itemdb_enqueue_frontend_scripts() {
-    wp_enqueue_style('itemdb-style', plugin_dir_url(__FILE__) . 'includes/styles.css', array(), '1.0.0');
-    wp_enqueue_script('itemdb-script', plugin_dir_url(__FILE__) . 'includes/itemdb.js', array('jquery'), '1.0.0', true);
-}
-add_action('wp_enqueue_scripts', 'itemdb_enqueue_frontend_scripts');
-
-function itemdb_enqueue_admin_scripts($hook) {
-    if ('post.php' != $hook && 'post-new.php' != $hook) {
-        return;
-    }
-    wp_enqueue_script('itemdb-admin-script', plugin_dir_url(__FILE__) . 'includes/admin-script.js', array('jquery'), '1.0.0', true);
-}
-add_action('admin_enqueue_scripts', 'itemdb_enqueue_admin_scripts');
 
 function itemdb_custom_fields_callback($post) {
     wp_nonce_field('itemdb_save_custom_fields', 'itemdb_custom_fields_nonce');
@@ -88,8 +81,8 @@ function itemdb_custom_fields_callback($post) {
     if (!empty($custom_fields)) {
         foreach ($custom_fields as $field) {
             echo '<div class="itemdb-custom-field">';
-            echo '<input type="text" name="itemdb_custom_fields[][label]" placeholder="Label" value="' . esc_attr($field['label']) . '">';
-            echo '<input type="text" name="itemdb_custom_fields[][value]" placeholder="Value" value="' . esc_attr($field['value']) . '">';
+            echo '<input type="text" name="_itemdb_custom_fields[][label]" placeholder="Label" value="' . esc_attr($field['label']) . '">';
+            echo '<input type="text" name="_itemdb_custom_fields[][value]" placeholder="Value" value="' . esc_attr($field['value']) . '">';
             echo '<a href="#" class="itemdb-remove-field button">Remove</a>';
             echo '</div>';
         }
@@ -100,8 +93,8 @@ function itemdb_custom_fields_callback($post) {
     // Add a template for new custom fields
     echo '<div id="itemdb-custom-field-template" style="display:none;">';
     echo '<div class="itemdb-custom-field">';
-    echo '<input type="text" name="itemdb_custom_fields[][label]" placeholder="Label">';
-    echo '<input type="text" name="itemdb_custom_fields[][value]" placeholder="Value">';
+    echo '<input type="text" name="_itemdb_custom_fields[][label]" placeholder="Label">';
+    echo '<input type="text" name="_itemdb_custom_fields[][value]" placeholder="Value">';
     echo '<a href="#" class="itemdb-remove-field button">Remove</a>';
     echo '</div>';
     echo '</div>';
@@ -121,17 +114,19 @@ function itemdb_save_custom_fields($post_id) {
         return;
     }
 
-    $custom_fields = isset($_POST['itemdb_custom_fields']) ? (array) $_POST['itemdb_custom_fields'] : array();
+    $custom_fields = isset($_POST['_itemdb_custom_fields']) ? (array) $_POST['_itemdb_custom_fields'] : array();
     $sanitized_fields = array();
+    $prefix = 'itemdb_'; // Replace this with your desired prefix
 
     foreach ($custom_fields as $field) {
         $sanitized_fields[] = array(
-            'label' => sanitize_text_field($field['label']),
+            'label' => $prefix . sanitize_text_field($field['label']),
             'value' => sanitize_text_field($field['value']),
         );
     }
 
     update_post_meta($post_id, '_itemdb_custom_fields', $sanitized_fields);
+    $saved_fields = get_post_meta($post_id, '_itemdb_custom_fields', true);
 }
 
 add_action('save_post', 'itemdb_save_custom_fields');
