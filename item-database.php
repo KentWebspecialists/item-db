@@ -171,7 +171,71 @@ function itemdb_add_settings_menu() {
 }
 add_action('admin_menu', 'itemdb_add_settings_menu');
 
-// Upload CSV //
+// Export CSV //
+
+// Add this function to add the 'Export to CSV' option to the bulk actions dropdown.
+function item_db_add_export_bulk_action($actions) {
+    $actions['export_csv'] = 'Export to CSV';
+    return $actions;
+}
+add_filter('bulk_actions-edit-item-db', 'item_db_add_export_bulk_action');
+
+// Add this function to handle the 'Export to CSV' bulk action.
+function item_db_handle_export_bulk_action($redirect_to, $doaction, $post_ids) {
+    global $wpdb; // Make the $wpdb object available within the function.
+
+    if ($doaction !== 'export_csv') {
+        return $redirect_to;
+    }
+
+    // Get all the custom fields' meta keys associated with the 'item-db' post type.
+    $meta_keys = $wpdb->get_col(
+        $wpdb->prepare(
+            "SELECT DISTINCT(meta_key) FROM {$wpdb->postmeta} WHERE post_id IN (
+                SELECT ID FROM {$wpdb->posts} WHERE post_type = %s
+            )",
+            'item-db'
+        )
+    );
+
+    $csv_data = [];
+    $header_row = ['Title', 'Content'];
+    $header_row = array_merge($header_row, $meta_keys);
+    $csv_data[] = $header_row;
+
+    foreach ($post_ids as $post_id) {
+        $post = get_post($post_id);
+        $title = $post->post_title;
+        $content = $post->post_content;
+
+        $row = [$title, $content];
+
+        // Loop through the custom fields and fetch their values for the current post.
+        foreach ($meta_keys as $meta_key) {
+            $meta_value = get_post_meta($post_id, $meta_key, true);
+            $row[] = $meta_value;
+        }
+
+        $csv_data[] = $row;
+    }
+
+    $csv_file = fopen('php://memory', 'w');
+    foreach ($csv_data as $row) {
+        fputcsv($csv_file, $row);
+    }
+
+    fseek($csv_file, 0);
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename=item-db-export.csv');
+    fpassthru($csv_file);
+    fclose($csv_file);
+    exit;
+}
+
+add_filter('handle_bulk_actions-edit-item-db', 'item_db_handle_export_bulk_action', 10, 3);
+
+
+// Import CSV //
 
 // Add this function to create the CSV upload form.
 function item_db_csv_upload_form() {
@@ -191,9 +255,10 @@ function item_db_import_csv() {
         if (!empty($_FILES['csv_file']['tmp_name'])) {
             $csv_file = fopen($_FILES['csv_file']['tmp_name'], 'r');
             $header = fgetcsv($csv_file);
+            $sanitized_header = array_map('sanitize_key', $header); // Sanitize column names using the 'sanitize_key' function.
 
             while ($row = fgetcsv($csv_file)) {
-                $data = array_combine($header, $row);
+                $data = array_combine($sanitized_header, $row);
 
                 // Create custom post type 'item-db' and set post meta.
                 $post_id = wp_insert_post([
@@ -204,9 +269,11 @@ function item_db_import_csv() {
                 ]);
 
                 if ($post_id !== 0) {
-                    update_post_meta($post_id, 'field_1', $data['field_1']);
-                    update_post_meta($post_id, 'field_2', $data['field_2']);
-                    // Add more fields as necessary.
+                    foreach ($data as $key => $value) {
+                        if (!in_array($key, ['title', 'content'])) {
+                            update_post_meta($post_id, $key, $value);
+                        }
+                    }
                 }
             }
 
