@@ -11,6 +11,10 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: item-db
 Domain Path: /languages
 */
+
+
+// Post Type Registration //
+
 require_once plugin_dir_path(__FILE__) . 'includes/itemdb-shortcode.php';
 function itemdb_enqueue_frontend_scripts() {
     wp_enqueue_style('itemdb-style', plugin_dir_url(__FILE__) . 'includes/styles.css', array(), '1.0.0');
@@ -131,14 +135,9 @@ add_action('save_post', 'itemdb_save_custom_fields');
 
 add_shortcode('ItemDB', 'itemdb_display_items');
 
-// //////////////// //
-// //////////////// //
-// //////////////// //
 // Settings Section //
-// //////////////// //
-// //////////////// //
-// //////////////// //
 
+// Modify the itemdb_settings_page() function to include the CSV upload form and the API key field.
 function itemdb_settings_page() {
     ?>
     <div class="wrap">
@@ -156,6 +155,7 @@ function itemdb_settings_page() {
             </table>
             <?php submit_button(); ?>
         </form>
+        <?php item_db_csv_upload_form(); ?>
     </div>
     <?php
 }
@@ -170,3 +170,53 @@ function itemdb_add_settings_menu() {
     add_options_page('ItemDB Settings', 'ItemDB Settings', 'manage_options', 'itemdb-settings', 'itemdb_settings_page');
 }
 add_action('admin_menu', 'itemdb_add_settings_menu');
+
+// Upload CSV //
+
+// Add this function to create the CSV upload form.
+function item_db_csv_upload_form() {
+    ?>
+    <h2>Import CSV</h2>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="csv_file" accept=".csv">
+        <input type="submit" name="import_csv" value="Import">
+        <?php wp_nonce_field('import_csv_nonce', 'import_csv_nonce_field'); ?>
+    </form>
+    <?php
+}
+
+// Add this function to process the CSV file and import the custom posts.
+function item_db_import_csv() {
+    if (isset($_POST['import_csv']) && check_admin_referer('import_csv_nonce', 'import_csv_nonce_field')) {
+        if (!empty($_FILES['csv_file']['tmp_name'])) {
+            $csv_file = fopen($_FILES['csv_file']['tmp_name'], 'r');
+            $header = fgetcsv($csv_file);
+
+            while ($row = fgetcsv($csv_file)) {
+                $data = array_combine($header, $row);
+
+                // Create custom post type 'item-db' and set post meta.
+                $post_id = wp_insert_post([
+                    'post_title' => $data['title'],
+                    'post_content' => isset($data['content']) ? $data['content'] : '',
+                    'post_status' => 'publish',
+                    'post_type' => 'item-db',
+                ]);
+
+                if ($post_id !== 0) {
+                    update_post_meta($post_id, 'field_1', $data['field_1']);
+                    update_post_meta($post_id, 'field_2', $data['field_2']);
+                    // Add more fields as necessary.
+                }
+            }
+
+            fclose($csv_file);
+            echo '<div class="notice notice-success is-dismissible"><p>CSV imported successfully.</p></div>';
+        } else {
+            echo '<div class="notice notice-error is-dismissible"><p>Please upload a CSV file.</p></div>';
+        }
+    }
+}
+
+// Add the 'item_db_import_csv' function to the 'admin_init' hook.
+add_action('admin_init', 'item_db_import_csv');
