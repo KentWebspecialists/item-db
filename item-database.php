@@ -74,7 +74,6 @@ add_action('init', 'itemdb_create_categories');
 
 function itemdb_custom_fields_callback($post) {
     wp_nonce_field('itemdb_save_custom_fields', 'itemdb_custom_fields_nonce');
-
     $custom_fields = get_post_meta($post->ID, '_itemdb_custom_fields', true);
 
     echo '<div id="itemdb-custom-fields-container">';
@@ -116,11 +115,10 @@ function itemdb_save_custom_fields($post_id) {
 
     $custom_fields = isset($_POST['_itemdb_custom_fields']) ? (array) $_POST['_itemdb_custom_fields'] : array();
     $sanitized_fields = array();
-    $prefix = 'itemdb_'; // Replace this with your desired prefix
-
+   
     foreach ($custom_fields as $field) {
         $sanitized_fields[] = array(
-            'label' => $prefix . sanitize_text_field($field['label']),
+            'label' => sanitize_text_field($field['label']),
             'value' => sanitize_text_field($field['value']),
         );
     }

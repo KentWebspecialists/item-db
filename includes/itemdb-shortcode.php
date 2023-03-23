@@ -1,7 +1,4 @@
 <?php
-
-
-
 function itemdb_display_items($atts) {
     $atts = shortcode_atts(array(
         'category' => '',
@@ -57,8 +54,9 @@ function itemdb_display_items($atts) {
             if (!empty($thumb_url)) {
                 $output .= '<div class="itemdb-thumbnail" style="background-image: url(' . esc_url($thumb_url) . ')"></div>';
             }
+            $output .= '<div class="u-content">';
             $output .= '<h3>' . get_the_title() . '</h3>';
-    
+                
             if (!empty($custom_fields)) {
                 $output .= '<ul class="itemdb-custom-fields">';
                 foreach ($custom_fields as $label => $value) {
@@ -72,6 +70,7 @@ function itemdb_display_items($atts) {
                 }
                 $output .= '</ul>';
             }
+            $output .= '</div>';
             $output .= '</div>';
         }
         wp_reset_postdata();
