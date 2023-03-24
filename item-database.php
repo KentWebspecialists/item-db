@@ -16,6 +16,7 @@ Domain Path: /languages
 // Post Type Registration //
 
 require_once plugin_dir_path(__FILE__) . 'includes/itemdb-shortcode.php';
+
 function itemdb_enqueue_frontend_scripts() {
     wp_enqueue_style('itemdb-style', plugin_dir_url(__FILE__) . 'includes/styles.css', array(), '1.0.0');
     wp_enqueue_script('itemdb-script', plugin_dir_url(__FILE__) . 'includes/itemdb.js', array('jquery'), '1.0.0', true);
@@ -24,8 +25,8 @@ add_action('wp_enqueue_scripts', 'itemdb_enqueue_frontend_scripts');
 
 function itemdb_enqueue_scripts() {
     wp_enqueue_script('itemdb-admin-script', plugin_dir_url(__FILE__) . 'admin-script.js', array('jquery'), '1.0.0', true);
+    wp_enqueue_style( 'itemdb-admin-styles', plugins_url( '/assets/css/admin-style.css', __FILE__ ) );
 }
-
 add_action('admin_enqueue_scripts', 'itemdb_enqueue_scripts');
 
 function itemdb_post_type() {
@@ -137,7 +138,34 @@ add_shortcode('ItemDB', 'itemdb_display_items');
 
 // Settings Section //
 
-// Modify the itemdb_settings_page() function to include the CSV upload form and the API key field.
+function itemdb_register_settings() {
+    // Register general settings
+    register_setting('itemdb_options', 'itemdb_google_api_key');
+    register_setting('itemdb_options', 'itemdb_services_api_key');
+
+    // Register pagination settings
+    register_setting('itemdb_options', 'itemdb_enable_pagination');
+    add_settings_section(
+        'itemdb_pagination_settings_section',
+        'Pagination Settings',
+        '',
+        'itemdb_options'
+    );
+    add_settings_field(
+        'itemdb_enable_pagination',
+        'Enable Pagination',
+        'itemdb_enable_pagination_render',
+        'itemdb_options',
+        'itemdb_pagination_settings_section'
+    );
+}
+add_action('admin_init', 'itemdb_register_settings');
+
+function itemdb_add_settings_menu() {
+    add_options_page('ItemDB Settings', 'ItemDB Settings', 'manage_options', 'itemdb-settings', 'itemdb_settings_page');
+}
+add_action('admin_menu', 'itemdb_add_settings_menu');
+
 function itemdb_settings_page() {
     ?>
     <div class="wrap">
@@ -160,16 +188,16 @@ function itemdb_settings_page() {
     <?php
 }
 
-function itemdb_register_settings() {
-    register_setting('itemdb_options', 'itemdb_google_api_key');
-    register_setting('itemdb_options', 'itemdb_services_api_key');
+function itemdb_enable_pagination_render() {
+    ?>
+    <label class="switch" for="checkbox">
+        <input type="checkbox" name="itemdb_enable_pagination" id="checkbox" value="1" <?php checked(1, get_option('itemdb_enable_pagination', 0)); ?>>
+        <div class="slider round"></div>
+        <?php esc_html_e('', 'itemdb'); ?>
+    </label>
+    <?php
 }
-add_action('admin_init', 'itemdb_register_settings');
 
-function itemdb_add_settings_menu() {
-    add_options_page('ItemDB Settings', 'ItemDB Settings', 'manage_options', 'itemdb-settings', 'itemdb_settings_page');
-}
-add_action('admin_menu', 'itemdb_add_settings_menu');
 
 // Export CSV //
 

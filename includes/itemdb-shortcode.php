@@ -14,14 +14,22 @@ function itemdb_display_items($atts) {
     //Add Pagination
     $paged = (get_query_var('paged')) ? get_query_var('paged') : 1;
 
+    // Get pagination setting value
+    $enable_pagination = get_option('itemdb_enable_pagination', 0);
+
     $args = array(
         'post_type' => 'item-db',
-        'posts_per_page' => 10,
         'orderby' => 'title',
         'order' => 'ASC',
-        'paged' => $paged,
-        
     );
+
+    if ($enable_pagination) {
+        $args['posts_per_page'] = 10;
+        $paged = (get_query_var('paged')) ? get_query_var('paged') : 1;
+        $args['paged'] = $paged;
+    } else {
+        $args['posts_per_page'] = -1;
+    }
 
     if ($letter_filter) {
         $args['title_like'] = $letter_filter . '%';
