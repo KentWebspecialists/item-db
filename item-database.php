@@ -212,10 +212,8 @@ function item_db_handle_export_bulk_action($redirect_to, $doaction, $post_ids) {
 
         // Loop through the custom fields and fetch their values for the current post.
         foreach ($meta_keys as $meta_key) {
-            if ($meta_key !== 'title' && $meta_key !== 'content') {
-                $meta_value = get_post_meta($post_id, $meta_key, true);
-                $row[] = $meta_value;
-            }
+            $meta_value = get_post_meta($post_id, $meta_key, true);
+            $row[] = $meta_value;
         }
 
         $csv_data[] = $row;
@@ -261,22 +259,21 @@ function item_db_import_csv() {
         if (!empty($_FILES['csv_file']['tmp_name'])) {
             $csv_file = fopen($_FILES['csv_file']['tmp_name'], 'r');
             $header = fgetcsv($csv_file);
-            $sanitized_header = array_map('custom_sanitize_key', $header); // Use custom_sanitize_key function.
 
             while ($row = fgetcsv($csv_file)) {
-                $data = array_combine($sanitized_header, $row);
+                $data = array_combine($header, $row);
 
                 // Create custom post type 'item-db' and set post meta.
                 $post_id = wp_insert_post([
-                    'post_title' => $data['title'],
-                    'post_content' => isset($data['content']) ? $data['content'] : '',
+                    'post_title' => isset($data['Title']) ? $data['Title'] : '',
+                    'post_content' => isset($data['Content']) ? $data['Content'] : '',
                     'post_status' => 'publish',
                     'post_type' => 'item-db',
                 ]);
 
                 if ($post_id !== 0) {
                     foreach ($data as $key => $value) {
-                        if (!in_array($key, ['title', 'content'])) {
+                        if ($key !== 'Title' && $key !== 'Content') {
                             update_post_meta($post_id, $key, $value);
                         }
                     }
