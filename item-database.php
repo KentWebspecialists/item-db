@@ -193,7 +193,7 @@ function item_db_handle_export_bulk_action($redirect_to, $doaction, $post_ids) {
         $wpdb->prepare(
             "SELECT DISTINCT(meta_key) FROM {$wpdb->postmeta} WHERE post_id IN (
                 SELECT ID FROM {$wpdb->posts} WHERE post_type = %s
-            )",
+            ) AND meta_key NOT IN ('title', 'content')",
             'item-db'
         )
     );
@@ -212,8 +212,10 @@ function item_db_handle_export_bulk_action($redirect_to, $doaction, $post_ids) {
 
         // Loop through the custom fields and fetch their values for the current post.
         foreach ($meta_keys as $meta_key) {
-            $meta_value = get_post_meta($post_id, $meta_key, true);
-            $row[] = $meta_value;
+            if ($meta_key !== 'title' && $meta_key !== 'content') {
+                $meta_value = get_post_meta($post_id, $meta_key, true);
+                $row[] = $meta_value;
+            }
         }
 
         $csv_data[] = $row;
@@ -249,13 +251,17 @@ function item_db_csv_upload_form() {
     <?php
 }
 
+function custom_sanitize_key($key) {
+    return preg_replace('/[^A-Za-z0-9_\-]+/', '', $key);
+}
+
 // Add this function to process the CSV file and import the custom posts.
 function item_db_import_csv() {
     if (isset($_POST['import_csv']) && check_admin_referer('import_csv_nonce', 'import_csv_nonce_field')) {
         if (!empty($_FILES['csv_file']['tmp_name'])) {
             $csv_file = fopen($_FILES['csv_file']['tmp_name'], 'r');
             $header = fgetcsv($csv_file);
-            $sanitized_header = array_map('sanitize_key', $header); // Sanitize column names using the 'sanitize_key' function.
+            $sanitized_header = array_map('custom_sanitize_key', $header); // Use custom_sanitize_key function.
 
             while ($row = fgetcsv($csv_file)) {
                 $data = array_combine($sanitized_header, $row);
