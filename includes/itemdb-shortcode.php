@@ -60,13 +60,17 @@ function itemdb_display_items($atts) {
             if (!empty($custom_fields)) {
                 $output .= '<ul class="itemdb-custom-fields">';
                 foreach ($custom_fields as $label => $value) {
-                    // Skip the meta keys that don't start with 'my_prefix_'
+                    // Skip the meta keys that don't start with 'itemdb_'
                     if (substr($label, 0, strlen('itemdb_')) !== 'itemdb_') {
                         continue;
                     }
                     // Remove the prefix from the label before displaying it
                     $display_label = substr($label, strlen('itemdb_'));
-                    $output .= '<li><strong>' . esc_html($display_label) . ':</strong> ' . esc_html(implode(', ', $value)) . '</li>';
+
+                    // Check if the value is not empty
+                    if (!empty(implode(', ', $value))) {
+                        $output .= '<li><strong>' . esc_html($display_label) . ':</strong> ' . esc_html(implode(', ', $value)) . '</li>';
+                    }
                 }
                 $output .= '</ul>';
             }
@@ -74,8 +78,7 @@ function itemdb_display_items($atts) {
             $output .= '</div>';
         }
         wp_reset_postdata();
-    }
-     else {
+    } else {
         $output .= '<p>No items found.</p>';
     }
 
