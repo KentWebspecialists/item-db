@@ -269,6 +269,30 @@ function item_db_set_post_data($post_id, $data) {
     }
 }
 
+function item_db_upload_image_from_url($image_url) {
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/media.php');
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+    
+    $tmp = download_url($image_url);
+
+    if (is_wp_error($tmp)) {
+        return false;
+    }
+
+    $file_array = array();
+    $file_array['name'] = basename($image_url);
+    $file_array['tmp_name'] = $tmp;
+
+    $attachment_id = media_handle_sideload($file_array, 0);
+
+    if (is_wp_error($attachment_id)) {
+        @unlink($file_array['tmp_name']);
+        return false;
+    }
+
+    return $attachment_id;
+}
 
 // Add this function to process the CSV file and import the custom posts.
 function item_db_import_csv() {
@@ -290,6 +314,13 @@ function item_db_import_csv() {
                     'post_status' => 'publish',
                     'post_type' => 'item-db',
                 ]);
+
+                if (!empty($data['Thumbnail_URL'])) {
+                    $attachment_id = item_db_upload_image_from_url($data['Thumbnail_URL']);
+                    if ($attachment_id) {
+                        set_post_thumbnail($post_id, $attachment_id);
+                    }
+                }
 
                 if ($post_id !== 0) {
                     item_db_set_post_data($post_id, $data);
