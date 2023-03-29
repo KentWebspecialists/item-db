@@ -147,7 +147,7 @@ function itemdb_register_settings() {
     register_setting('itemdb_options', 'itemdb_enable_pagination');
     add_settings_section(
         'itemdb_pagination_settings_section',
-        'Pagination Settings',
+        '',
         '',
         'itemdb_options'
     );
@@ -169,21 +169,24 @@ add_action('admin_menu', 'itemdb_add_settings_menu');
 function itemdb_settings_page() {
     ?>
     <div class="wrap">
+        <form method="post" action="options.php" class="itemdb-section card">
         <h1>ItemDB Settings</h1>
-        <form method="post" action="options.php">
-            <?php
-            settings_fields('itemdb_options');
-            do_settings_sections('itemdb_options');
-            ?>
             <table class="form-table">
                 <tr valign="top">
                     <th scope="row">Google API Key</th>
                     <td><input type="text" name="itemdb_google_api_key" value="<?php echo esc_attr(get_option('itemdb_google_api_key')); ?>" /></td>
                 </tr>
             </table>
+            <h3>Configuration</h3>
+            <?php
+                settings_fields('itemdb_options');
+                do_settings_sections('itemdb_options');
+            ?>
             <?php submit_button(); ?>
         </form>
-        <?php item_db_csv_upload_form(); ?>
+        <div class="itemdb-section card">
+            <?php item_db_csv_upload_form(); ?>
+        </div>
     </div>
     <?php
 }
@@ -200,7 +203,6 @@ function itemdb_enable_pagination_render() {
 
 
 // Export CSV //
-
 // Add this function to add the 'Export to CSV' option to the bulk actions dropdown.
 function item_db_add_export_bulk_action($actions) {
     $actions['export_csv'] = 'Export to CSV';
