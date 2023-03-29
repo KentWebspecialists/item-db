@@ -69,3 +69,35 @@
   min-width: 100px;
   font-weight: bold;
 }
+/* Pagination container */
+.itemdb-pagination {
+  text-align: center;
+  margin: 30px 0;
+}
+
+/* Pagination links */
+.itemdb-pagination a,
+.itemdb-pagination span {
+  display: inline-block;
+  padding: 5px 10px;
+  margin: 0 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  text-decoration: none;
+  color: #333;
+  font-size: 14px;
+}
+
+/* Pagination current page and hover states */
+.itemdb-pagination .current,
+.itemdb-pagination a:hover {
+  background-color: #333;
+  color: #fff;
+  border-color: #333;
+}
+
+/* Pagination disabled state */
+.itemdb-pagination .disabled {
+  color: #999;
+  border-color: #ddd;
+}

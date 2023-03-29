@@ -11,12 +11,25 @@ function itemdb_display_items($atts) {
     // Get filter value from URL parameter
     $letter_filter = isset($_GET['letter']) ? $_GET['letter'] : '';
 
+    //Add Pagination
+    $paged = (get_query_var('paged')) ? get_query_var('paged') : 1;
+
+    // Get pagination setting value
+    $enable_pagination = get_option('itemdb_enable_pagination', 0);
+
     $args = array(
         'post_type' => 'item-db',
-        'posts_per_page' => -1,
         'orderby' => 'title',
         'order' => 'ASC',
     );
+
+    if ($enable_pagination) {
+        $args['posts_per_page'] = 10;
+        $paged = (get_query_var('paged')) ? get_query_var('paged') : 1;
+        $args['paged'] = $paged;
+    } else {
+        $args['posts_per_page'] = -1;
+    }
 
     if ($letter_filter) {
         $args['title_like'] = $letter_filter . '%';
@@ -77,13 +90,21 @@ function itemdb_display_items($atts) {
             $output .= '</div>';
             $output .= '</div>';
         }
-        wp_reset_postdata();
-    } else {
-        $output .= '<p>No items found.</p>';
-    }
 
     $output .= '</div>'; // Close the itemdb-grid div
     $output .= '</div>'; // Close the itemdb-wrapper div
 
+    $big = 999999999; // This is just an arbitrary number for replacing it later.
+    $output .= '<div class="itemdb-pagination">';
+    $output .= paginate_links(array(
+        'base' => str_replace($big, '%#%', esc_url(get_pagenum_link($big))),
+        'format' => '?paged=%#%',
+        'current' => max(1, get_query_var('paged')),
+        'total' => $items->max_num_pages,
+    ));
+    $output .= '</div>';
+    wp_reset_postdata();
+
     return $output;
+    }
 }
