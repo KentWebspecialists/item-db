@@ -16,6 +16,7 @@ Domain Path: /languages
 // Post Type Registration //
 
 require_once plugin_dir_path(__FILE__) . 'includes/itemdb-shortcode.php';
+require_once plugin_dir_path(__FILE__) . 'vendor/autoload.php';
 
 function itemdb_enqueue_frontend_scripts() {
     wp_enqueue_style('itemdb-style', plugin_dir_url(__FILE__) . 'includes/styles.css', array(), '1.0.0');
@@ -187,6 +188,13 @@ function itemdb_settings_page() {
         <div class="itemdb-section card">
             <?php item_db_csv_upload_form(); ?>
         </div>
+
+        <!-- Add the new form for the "Sync Sheets" button -->
+        <form method="post" class="itemdb-section card">
+            <h2>Sync Sheets</h2>
+            <?php wp_nonce_field('itemdb_sync_sheets', 'itemdb_sync_sheets_nonce'); ?>
+            <input type="submit" id="sync-sheets" name="sync_sheets" value="Sync Sheets" class="button button-primary">
+        </form>
     </div>
     <?php
 }
@@ -367,3 +375,45 @@ function item_db_import_csv() {
 
 // Add the 'item_db_import_csv' function to the 'admin_init' hook.
 add_action('admin_init', 'item_db_import_csv');
+
+//Google Sheet Integration
+
+function itemdb_handle_sync_sheets() {
+    if (isset($_POST['sync_sheets']) && check_admin_referer('itemdb_sync_sheets', 'itemdb_sync_sheets_nonce')) {
+        itemdb_fetch_data_from_google_sheets();
+        echo '<div class="notice notice-success is-dismissible"><p>Synced data from Google Sheets successfully.</p></div>';
+    }
+}
+
+function itemdb_fetch_data_from_google_sheets() {
+    $google_api_key = get_option('itemdb_google_api_key');
+    if (empty($google_api_key)) {
+        return;
+    }
+
+    // Set the Google Sheets ID and range of the data you want to fetch
+    $spreadsheet_id = '16ATtZYLt6M6JnHQUUpuganHEs4xeLnLIBipnBaEvmY8';
+    $range = 'Sheet1!A1:J23';
+
+    $client = new Google_Client();
+    $client->setApplicationName('ItemDB');
+    $client->setScopes(Google_Service_Sheets::SPREADSHEETS_READONLY);
+    $client->setDeveloperKey($google_api_key);
+
+    $sheets = new Google_Service_Sheets($client);
+    $response = $sheets->spreadsheets_values->get($spreadsheet_id, $range);
+    $values = $response->getValues();
+
+    if (empty($values)) {
+        return;
+    }
+
+    $header = array_shift($values);
+
+    foreach ($values as $row) {
+        $data = array_combine($header, $row);
+
+        // Add your logic to insert or update the custom post type 'item-db' with the fetched data
+    }
+}
+add_action('admin_init', 'itemdb_handle_sync_sheets');
