@@ -16,6 +16,7 @@ Domain Path: /languages
 // Post Type Registration //
 
 require_once plugin_dir_path(__FILE__) . 'includes/itemdb-shortcode.php';
+require_once plugin_dir_path(__FILE__) . 'vendor/autoload.php';
 
 function itemdb_enqueue_frontend_scripts() {
     wp_enqueue_style('itemdb-style', plugin_dir_url(__FILE__) . 'includes/styles.css', array(), '1.0.0');
@@ -141,6 +142,7 @@ add_shortcode('ItemDB', 'itemdb_display_items');
 function itemdb_register_settings() {
     // Register general settings
     register_setting('itemdb_options', 'itemdb_google_api_key');
+    register_setting('itemdb_options', 'itemdb_google_sheet_id');
     register_setting('itemdb_options', 'itemdb_services_api_key');
 
     // Register pagination settings
@@ -167,21 +169,57 @@ function itemdb_add_settings_menu() {
 add_action('admin_menu', 'itemdb_add_settings_menu');
 
 function itemdb_settings_page() {
+    $google_api_key = get_option('itemdb_google_api_key');
+    $spreadsheet_id = get_option('itemdb_google_sheet_id');
+    $error_message = '';
+
+    if (empty($google_api_key)) {
+        $error_message = 'Please enter a valid Google API key.';
+    } elseif (empty($spreadsheet_id)) {
+        $error_message = 'Please enter a valid Google Sheet ID.';
+    } else {
+        // Try connecting to the Google Sheets API
+        $client = new Google_Client();
+        $client->setApplicationName('ItemDB');
+        $client->setScopes(Google_Service_Sheets::SPREADSHEETS_READONLY);
+        $client->setDeveloperKey($google_api_key);
+
+        $sheets = new Google_Service_Sheets($client);
+        try {
+            $sheets->spreadsheets->get($spreadsheet_id);
+        } catch (Google_Service_Exception $e) {
+            $error_message = 'There was a problem connecting to the Google Sheets API. Please check your Google API key and Sheet ID.';
+        }
+    }
+
     ?>
     <div class="wrap">
-        <form method="post" action="options.php" class="itemdb-section card">
-        <h1>ItemDB Settings</h1>
+        <form method="post" action="<?php echo esc_attr(admin_url('options.php')); ?>" class="itemdb-section card">
+            <h1>ItemDB Settings</h1>
             <table class="form-table">
                 <tr valign="top">
                     <th scope="row">Google API Key</th>
-                    <td><input type="text" name="itemdb_google_api_key" value="<?php echo esc_attr(get_option('itemdb_google_api_key')); ?>" /></td>
+                    <td><input type="text" name="itemdb_google_api_key" value="<?php echo esc_attr($google_api_key); ?>" /></td>
                 </tr>
+                <tr valign="top">
+                    <th scope="row">Google Sheet ID</th>
+                    <td>
+                        <input type="text" name="itemdb_google_sheet_id" value="<?php echo esc_attr($spreadsheet_id); ?>" />
+                        <?php if (!empty($error_message)) { ?>
+                            <p style="color: red;"><?php echo $error_message; ?></p>
+                        <?php } ?>
+                    </td>
+                </tr>
+                
             </table>
             <h3>Configuration</h3>
             <?php
                 settings_fields('itemdb_options');
                 do_settings_sections('itemdb_options');
             ?>
+            <h2>Sync Sheets</h2>
+            <?php wp_nonce_field('itemdb_sync_sheets', 'itemdb_sync_sheets_nonce'); ?>
+            <input type="submit" id="sync-sheets" name="sync_sheets" value="Sync Sheets" class="button button-primary">
             <?php submit_button(); ?>
         </form>
         <div class="itemdb-section card">
@@ -367,3 +405,138 @@ function item_db_import_csv() {
 
 // Add the 'item_db_import_csv' function to the 'admin_init' hook.
 add_action('admin_init', 'item_db_import_csv');
+
+//Google Sheet Integration
+function itemdb_handle_sync_sheets() {
+    // Check if the sync_sheets button was clicked and the user has permission
+    if (isset($_POST['sync_sheets']) && current_user_can('manage_options')) {
+        // Check if the Google API key and Sheet ID are valid
+        $google_api_key = get_option('itemdb_google_api_key');
+        $spreadsheet_id = get_option('itemdb_google_sheet_id');
+
+        if (empty($google_api_key) || empty($spreadsheet_id)) {
+            // Display an error message if the API key or Sheet ID is empty
+            $error_message = 'Please enter a valid Google API key and Sheet ID.';
+            add_settings_error('itemdb_options', 'itemdb_sync_sheets_error', $error_message, 'error');
+            return;
+        }
+
+        // Try connecting to the Google Sheets API
+        $client = new Google_Client();
+        $client->setApplicationName('ItemDB');
+        $client->setScopes(Google_Service_Sheets::SPREADSHEETS_READONLY);
+        $client->setDeveloperKey($google_api_key);
+
+        $sheets = new Google_Service_Sheets($client);
+
+        try {
+            $response = $sheets->spreadsheets_values->get($spreadsheet_id, $range);
+            $values = $response->getValues();
+        } catch (Google_Service_Exception $e) {
+            // Display an error message if there was a problem connecting to the API
+            $error_message = 'There was a problem connecting to the Google Sheets API. Please check your Google API key and Sheet ID.';
+            add_settings_error('itemdb_options', 'itemdb_sync_sheets_error', $error_message, 'error');
+            return;
+        }
+
+        // Fetch data from the Google Sheets API and update the custom post type
+        itemdb_fetch_data_from_google_sheets();
+    }
+}
+add_action('admin_init', 'itemdb_handle_sync_sheets');
+
+
+function itemdb_fetch_data_from_google_sheets() {
+    $google_api_key = get_option('itemdb_google_api_key');
+    if (empty($google_api_key)) {
+        return;
+    }
+
+    // Set the Google Sheets ID and range of the data you want to fetch
+    $spreadsheet_id = get_option('itemdb_google_sheet_id');
+    $range = 'Sheet1!A1:J23';
+
+    $client = new Google_Client();
+    $client->setApplicationName('ItemDB');
+    $client->setScopes(Google_Service_Sheets::SPREADSHEETS_READONLY);
+    $client->setDeveloperKey($google_api_key);
+
+    $sheets = new Google_Service_Sheets($client);
+
+    try {
+        $response = $sheets->spreadsheets_values->get($spreadsheet_id, $range);
+        $values = $response->getValues();
+    } catch (GuzzleHttp\Exception\ConnectException $e) {
+        // If the API call fails due to connectivity issues, display a message in the admin panel
+        $error_message = $e->getMessage();
+        $message = sprintf(__('Unable to connect to Google Sheets API. Error message: %s'), $error_message);
+        add_settings_error('itemdb_options', 'itemdb_error', $message, 'error');
+        return;
+    } catch (Google_Service_Exception $e) {
+        // If the API call fails for another reason, display a message in the admin panel
+        $error_message = $e->getMessage();
+        $error_code = $e->getCode();
+        $message = sprintf(__('Unable to retrieve data from Google Sheets. Error code: %s, message: %s'), $error_code, $error_message);
+        add_settings_error('itemdb_options', 'itemdb_error', $message, 'error');
+        return;
+    }
+
+    if (empty($values)) {
+        return;
+    }
+
+    $header = array_shift($values);
+
+    foreach ($values as $row) {
+        $data = array_combine($header, $row);
+    
+        // Create an array of all the columns in the Google Sheets that have a prefix of 'itemdb_'
+        $itemdb_columns = array_filter(array_keys($data), function($column) {
+            return strpos($column, 'itemdb_') === 0;
+        });
+    
+        // Loop through each itemdb_ column and update or create the corresponding meta field
+        foreach ($itemdb_columns as $itemdb_column) {
+            $meta_key = str_replace('itemdb_', '', $itemdb_column);
+            $meta_value = $data[$itemdb_column];
+    
+            // Check if a custom meta field with that name already exists in the 'item-db' custom post type
+            $existing_meta = get_post_meta($post_id, $meta_key, true);
+            if ($existing_meta) {
+                // If the meta field exists, update its value with the corresponding value from the Google Sheets
+                update_post_meta($post_id, $meta_key, $meta_value);
+            } else {
+                // If the meta field does not exist, create a new meta field with the name and value from the Google Sheets
+                add_post_meta($post_id, $meta_key, $meta_value);
+            }
+        }
+    
+        // Check if a post with the same post ID already exists in the 'item-db' custom post type
+        $post_id = $data['post_id'];
+        $existing_post = get_post($post_id);
+        if ($existing_post && $existing_post->post_type == 'item-db') {
+            // If the post exists, update its meta fields with the data from the Google Sheets
+            update_post_meta($post_id, 'item_name', $data['item_name']);
+            update_post_meta($post_id, 'item_description', $data['item_description']);
+        } else {
+            // If the post does not exist, create a new post with the data from the Google Sheets
+            $new_post = array(
+                'post_type' => 'item-db',
+                'post_status' => 'publish',
+                'post_title' => $data['item_name'],
+                'post_content' => !empty($data['item_description']) ? $data['item_description'] : 'No description available.',
+                'meta_input' => array(
+                    'post_id' => $data['post_id']
+                )
+            );
+            wp_insert_post($new_post);
+        }
+    }
+}
+
+add_action('admin_init', 'itemdb_handle_sync_sheets');
+
+
+
+
+
