@@ -16,6 +16,8 @@ Domain Path: /languages
 // Post Type Registration //
 
 require_once plugin_dir_path(__FILE__) . 'includes/itemdb-shortcode.php';
+require_once plugin_dir_path(__FILE__) . 'includes/meta_fields.php';
+require_once plugin_dir_path(__FILE__) . 'includes/media_uploader.php';
 
 function itemdb_enqueue_frontend_scripts() {
     wp_enqueue_style('itemdb-style', plugin_dir_url(__FILE__) . 'includes/styles.css', array(), '1.0.0');
@@ -24,10 +26,31 @@ function itemdb_enqueue_frontend_scripts() {
 add_action('wp_enqueue_scripts', 'itemdb_enqueue_frontend_scripts');
 
 function itemdb_enqueue_scripts() {
+    wp_enqueue_media();
     wp_enqueue_script('itemdb-admin-script', plugin_dir_url(__FILE__) . 'admin-script.js', array('jquery'), '1.0.0', true);
     wp_enqueue_style( 'itemdb-admin-styles', plugins_url( '/assets/css/admin-style.css', __FILE__ ) );
+    wp_enqueue_script('itemdb-script', plugin_dir_url(__FILE__) . 'js/itemdb-script.js', array('jquery'));
 }
 add_action('admin_enqueue_scripts', 'itemdb_enqueue_scripts');
+
+function itemdb_save_postdata($post_id) {
+    if (array_key_exists('itemdb_main_text_field', $_POST)) {
+        update_post_meta(
+            $post_id,
+            'itemdb_main_text',
+            $_POST['itemdb_main_text_field']
+        );
+    }
+    
+    if (array_key_exists('itemdb_images_field', $_POST)) {
+        update_post_meta(
+            $post_id,
+            'itemdb_images',
+            $_POST['itemdb_images_field']
+        );
+    }
+}
+add_action('save_post', 'itemdb_save_postdata');
 
 function itemdb_post_link( $post_link, $id = 0 ){
     $post = get_post($id);  
@@ -88,8 +111,6 @@ function itemdb_create_categories() {
     register_taxonomy('item_category', array('db'), $args);
 }
 add_action('init', 'itemdb_create_categories');
-
-
 add_shortcode('ItemDB', 'itemdb_display_items');
 
 // Settings Section //
