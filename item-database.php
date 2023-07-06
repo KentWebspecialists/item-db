@@ -29,8 +29,21 @@ function itemdb_enqueue_scripts() {
 }
 add_action('admin_enqueue_scripts', 'itemdb_enqueue_scripts');
 
+function itemdb_post_link( $post_link, $id = 0 ){
+    $post = get_post($id);  
+    if ( is_object( $post ) ){
+        $terms = wp_get_object_terms( $post->ID, 'item_category' );
+        if( $terms ){
+            return str_replace( '%item_category%' , $terms[0]->slug , $post_link );
+        }
+    }
+    return $post_link;  
+}
+add_filter( 'post_type_link', 'itemdb_post_link', 1, 3 );
+
+
 function itemdb_post_type() {
-    register_post_type( 'item-db',
+    register_post_type( 'db',
         array(
             'labels' => array(
                 'name' => __( 'Items' ),
@@ -39,10 +52,10 @@ function itemdb_post_type() {
             'public' => true,
             'show_in_rest' => true,
             'supports' => array('title', 'thumbnail', 'custom-fields'),
-        'has_archive' => true,
-        'rewrite'   => array( 'slug' => 'item-db' ),
+            'has_archive' => true,
+            'rewrite' => array( 'slug' => 'db/%item_category%', 'with_front' => true ),
             'menu_position' => 5,
-        'menu_icon' => 'dashicons-layout',
+            'menu_icon' => 'dashicons-layout',
         )
     );
 }
@@ -72,67 +85,10 @@ function itemdb_create_categories() {
         'rewrite' => array('slug' => 'item-category'),
     );
 
-    register_taxonomy('item_category', array('item-db'), $args);
+    register_taxonomy('item_category', array('db'), $args);
 }
 add_action('init', 'itemdb_create_categories');
 
-
-function itemdb_custom_fields_callback($post) {
-    wp_nonce_field('itemdb_save_custom_fields', 'itemdb_custom_fields_nonce');
-    $custom_fields = get_post_meta($post->ID, '_itemdb_custom_fields', true);
-
-    echo '<div id="itemdb-custom-fields-container">';
-    if (!empty($custom_fields)) {
-        foreach ($custom_fields as $field) {
-            echo '<div class="itemdb-custom-field">';
-            echo '<input type="text" name="_itemdb_custom_fields[][label]" placeholder="Label" value="' . esc_attr($field['label']) . '">';
-            echo '<input type="text" name="_itemdb_custom_fields[][value]" placeholder="Value" value="' . esc_attr($field['value']) . '">';
-            echo '<a href="#" class="itemdb-remove-field button">Remove</a>';
-            echo '</div>';
-        }
-    }
-    echo '</div>';
-    echo '<p><a href="#" id="itemdb-add-field" class="button">Add Field</a></p>';
-
-    // Add a template for new custom fields
-    echo '<div id="itemdb-custom-field-template" style="display:none;">';
-    echo '<div class="itemdb-custom-field">';
-    echo '<input type="text" name="_itemdb_custom_fields[][label]" placeholder="Label">';
-    echo '<input type="text" name="_itemdb_custom_fields[][value]" placeholder="Value">';
-    echo '<a href="#" class="itemdb-remove-field button">Remove</a>';
-    echo '</div>';
-    echo '</div>';
-}
-
-
-function itemdb_save_custom_fields($post_id) {
-    if (!isset($_POST['itemdb_custom_fields_nonce']) || !wp_verify_nonce($_POST['itemdb_custom_fields_nonce'], 'itemdb_save_custom_fields')) {
-        return;
-    }
-
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
-        return;
-    }
-
-    if (!current_user_can('edit_post', $post_id)) {
-        return;
-    }
-
-    $custom_fields = isset($_POST['_itemdb_custom_fields']) ? (array) $_POST['_itemdb_custom_fields'] : array();
-    $sanitized_fields = array();
-   
-    foreach ($custom_fields as $field) {
-        $sanitized_fields[] = array(
-            'label' => sanitize_text_field($field['label']),
-            'value' => sanitize_text_field($field['value']),
-        );
-    }
-
-    update_post_meta($post_id, '_itemdb_custom_fields', $sanitized_fields);
-    $saved_fields = get_post_meta($post_id, '_itemdb_custom_fields', true);
-}
-
-add_action('save_post', 'itemdb_save_custom_fields');
 
 add_shortcode('ItemDB', 'itemdb_display_items');
 
@@ -191,6 +147,23 @@ function itemdb_settings_page() {
     <?php
 }
 
+function itemdb_custom_single_template($single_template) {
+    global $post;
+
+    // Checks for single template by post type
+    if ($post->post_type == 'db') {
+        if ( file_exists( plugin_dir_path( __FILE__ ) . 'post-templates/post-data.php' ) ) {
+            return plugin_dir_path( __FILE__ ) . 'post-templates/post-data.php';
+        }
+    }
+
+    return $single_template;
+}
+
+add_filter( 'single_template', 'itemdb_custom_single_template' );
+
+
+
 function itemdb_enable_pagination_render() {
     ?>
     <label class="switch" for="checkbox">
@@ -219,7 +192,7 @@ function item_db_handle_export_bulk_action($redirect_to, $doaction, $post_ids) {
             "SELECT DISTINCT(meta_key) FROM {$wpdb->postmeta} WHERE post_id IN (
                 SELECT ID FROM {$wpdb->posts} WHERE post_type = %s
             ) AND meta_key LIKE %s",
-            'item-db',
+            'db',
             'itemdb_%'
         )
     );
@@ -342,7 +315,7 @@ function item_db_import_csv() {
                     'post_title' => isset($data['Title']) ? $data['Title'] : '',
                     'post_content' => isset($data['Content']) ? $data['Content'] : '',
                     'post_status' => 'publish',
-                    'post_type' => 'item-db',
+                    'post_type' => 'db',
                 ]);
 
                 if (!empty($data['Thumbnail_URL'])) {
