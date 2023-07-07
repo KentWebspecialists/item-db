@@ -101,3 +101,14 @@
   color: #999;
   border-color: #ddd;
 }
+
+div#itemdb-upload-button {
+  width: 100%;
+  border: 3px dashed rgb(0, 0, 0);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 50px;
+}

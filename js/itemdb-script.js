@@ -1,30 +1,37 @@
 jQuery(document).ready(function ($) {
-  var custom_uploader;
+  function ct_media_upload(button_class) {
+    var _custom_media = true,
+      _orig_send_attachment = wp.media.editor.send.attachment;
 
-  $("#itemdb-upload-button").click(function (e) {
-    e.preventDefault();
-
-    // Extend the wp.media object
-    custom_uploader = wp.media.frames.file_frame = wp.media({
-      title: "Choose Images",
-      button: {
-        text: "Choose Images",
-      },
-      multiple: true, // Set this to true to allow multiple files to be selected
+    $("body").on("click", button_class, function (e) {
+      var button_id = "#" + $(this).attr("id");
+      var send_attachment_bkp = wp.media.editor.send.attachment;
+      var button = $(button_id);
+      _custom_media = true;
+      wp.media.editor.send.attachment = function (props, attachment) {
+        if (_custom_media) {
+          $("#item-category-image-id").val(attachment.id);
+          $("#item-category-image-wrapper").html(
+            '<img class="custom_media_image" src="" style="margin:0;padding:0;max-height:100px;float:none;" />'
+          );
+          $("#item-category-image-wrapper .custom_media_image")
+            .attr("src", attachment.url)
+            .css("display", "block");
+        } else {
+          return _orig_send_attachment.apply(button_id, [props, attachment]);
+        }
+      };
+      wp.media.editor.open(button);
+      return false;
     });
+  }
+  ct_media_upload(".mytheme_tax_media_button.button");
 
-    // When a file is selected, grab the URL and set it as the text field's value
-    custom_uploader.on("select", function () {
-      var selection = custom_uploader.state().get("selection");
-      var image_urls = [];
-      selection.map(function (attachment) {
-        attachment = attachment.toJSON();
-        image_urls.push(attachment.url);
-      });
-      $("#itemdb-image-field").val(image_urls.join(","));
-    });
-
-    // Open the uploader dialog
-    custom_uploader.open();
+  $("body").on("click", ".mytheme_tax_media_remove", function () {
+    $("#item-category-image-id").val("");
+    $("#item-category-image-wrapper").html(
+      '<p>No image selected <a href="#">Add Image</a></p>'
+    );
+    return false;
   });
 });
