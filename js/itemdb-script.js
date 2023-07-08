@@ -1,30 +1,48 @@
 jQuery(document).ready(function ($) {
-  var custom_uploader;
+  var mediaUploader;
 
   $("#itemdb-upload-button").click(function (e) {
     e.preventDefault();
 
-    // Extend the wp.media object
-    custom_uploader = wp.media.frames.file_frame = wp.media({
-      title: "Choose Images",
+    if (mediaUploader) {
+      mediaUploader.open();
+      return;
+    }
+
+    mediaUploader = wp.media.frames.file_frame = wp.media({
+      title: "Choose Image",
       button: {
-        text: "Choose Images",
+        text: "Choose Image",
       },
-      multiple: true, // Set this to true to allow multiple files to be selected
+      multiple: true,
     });
 
-    // When a file is selected, grab the URL and set it as the text field's value
-    custom_uploader.on("select", function () {
-      var selection = custom_uploader.state().get("selection");
-      var image_urls = [];
-      selection.map(function (attachment) {
-        attachment = attachment.toJSON();
-        image_urls.push(attachment.url);
+    mediaUploader.on("select", function () {
+      var attachments = mediaUploader.state().get("selection").toJSON();
+      var newImageUrls = attachments.map(function (attachment) {
+        return attachment.url;
       });
-      $("#itemdb-image-field").val(image_urls.join(","));
+
+      var oldImageUrls = $("#itemdb-image-field")
+        .val()
+        .split(",")
+        .map(function (url) {
+          return url.trim();
+        });
+
+      var allImageUrls = oldImageUrls.concat(newImageUrls);
+
+      $("#itemdb-image-field").val(allImageUrls.join(","));
+      $(".itemdb-gallery-container").empty();
+      allImageUrls.forEach(function (url) {
+        $(".itemdb-gallery-container").append(
+          '<div class="itemdb-image"><img src="' +
+            url +
+            '" style="max-width: 200px; max-height: 200px;"></div>'
+        );
+      });
     });
 
-    // Open the uploader dialog
-    custom_uploader.open();
+    mediaUploader.open();
   });
 });

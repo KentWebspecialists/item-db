@@ -29,20 +29,32 @@
 </style>
     <section class="Hero">
         <div id="blogpost" class="container-fluid">	
-            <?php if ( have_posts() ) : while ( have_posts() ) : the_post();
-			
-			$post_id = get_the_ID(); // get the ID of the current post
-			$custom_fields = get_post_meta($post_id); // get an array of all custom fields
-			
-			foreach ($custom_fields as $field_name => $field_value) {
-				if (strpos($field_name, 'itemdb_') === 0) { // Check if the custom field name starts with 'itemdb_'
-					// Remove 'itemdb_' from the start of the field name
-					$clean_field_name = str_replace('itemdb_', '', $field_name);
-					echo '<p><strong>' . esc_html($clean_field_name) . ':</strong> ' . esc_html($field_value[0]) . '</p>';
-				}
-			}
-			
-			?>
+		<?php 
+if ( have_posts() ) : 
+    while ( have_posts() ) : 
+        the_post();
+        
+        $post_id = get_the_ID(); // get the ID of the current post
+        $custom_fields = get_post_meta($post_id); // get an array of all custom fields
+        
+        foreach ($custom_fields as $field_name => $field_value) {
+            if (strpos($field_name, 'itemdb_') === 0) { // Check if the custom field name starts with 'itemdb_'
+                // Remove 'itemdb_' from the start of the field name
+                $clean_field_name = str_replace('itemdb_', '', $field_name);
+
+                if($clean_field_name == 'images') {
+                    $images = explode(',', $field_value[0]);
+                    echo '<p><strong>Images:</strong></p>';
+                    foreach ($images as $image) {
+                        echo '<img src="' . esc_url($image) . '" style="max-width:200px; max-height:200px;"/>';
+                    }
+                } else {
+                    echo '<p><strong>' . esc_html($clean_field_name) . ':</strong> ' . esc_html($field_value[0]) . '</p>';
+                }
+            }
+        }
+?>
+
 			
 			
 			<div class="mt-2 container bg-light">

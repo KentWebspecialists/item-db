@@ -1,5 +1,6 @@
 <?php
 
+/* Main Text Box */
 function itemdb_add_custom_box() {
     add_meta_box(
         'itemdb_box_id',               // Unique ID
